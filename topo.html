@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+
+.node {
+    stroke: #fff;
+    stroke-width: 1.5px;
+}
+.link {
+    stroke: #999;
+    stroke-opacity: .6;
+}
+
+</style>
+<svg id="chart"></svg>
+<script src="http://d3js.org/d3.v3.min.js"></script>
+<script>
+    //Constants for the SVG
+    var width  = 500,
+    height = 500;
+
+    //Set up the colour scale
+    var color = d3.scale.category20();
+
+    //Set up the force layout
+    var force = d3.layout.force()
+        .charge(-120)
+        .linkDistance(30)
+        .size([width, height]);
+
+    //Append a SVG to the body of the html page. Assign this SVG as an object to svg
+    var svg = d3.select("#chart")
+        .attr("width", width)
+        .attr("height", height);
+
+     var graph = {
+        nodes: [
+            {name: 'IB 1', type: 0},
+            {name: 'IB 2', type: 0},
+            {name: 'stage2', type: 1},
+            {name: 'stage69', type: 1},
+        ],
+        links: [
+            {source: 2, target: 1, value: 3},
+            {source: 3, target: 1, value: 5},
+            {source: 1, target: 0, value: 5},
+        ]
+     };
+
+    //Creates the graph data structure out of the json data
+    force.nodes(graph.nodes)
+        .links(graph.links)
+        .start();
+
+    //Create all the line svgs but without locations yet
+    var link = svg.selectAll(".link")
+        .data(graph.links)
+      .enter().append("line")
+        .attr("class", "link")
+        .style("stroke-width", function (d) {
+            return 15;
+        });
+
+    //Do the same with the circles for the nodes - no 
+    var node = svg.selectAll(".node")
+        .data(graph.nodes)
+      .enter().append("g");
+    var circle = node.append('circle')
+        .attr("class", "node")
+        .attr("r", 8)
+        .style("fill", function (d) {
+            return color(d.type);
+        })
+        .call(force.drag);
+    var text = node.append('text')
+        .text(function(d) { return d.name; })
+        .attr('dx', 10)
+
+
+    //Now we are giving the SVGs co-ordinates - the force layout is generating the co-ordinates which this code is using to update the attributes of the SVG elements
+    force.on("tick", function () {
+        link.attr("x1", function (d) {
+            return d.source.x;
+        })
+        .attr("y1", function (d) {
+            return d.source.y;
+        })
+        .attr("x2", function (d) {
+            return d.target.x;
+        })
+        .attr("y2", function (d) {
+            return d.target.y;
+        });
+
+        //Causes some weird yanking when dragging a node
+        // node.attr('transform', function(d) {
+        //     return 'translate(' + d.x + ',' + d.y +')'
+        // })
+
+        //Changing the coordinates of the circle and text
+        //separately makes dragging smooth.
+        circle.attr("cx", function (d) {
+            return d.x;
+        })
+        .attr("cy", function (d) {
+            return d.y;
+        });
+
+        text.attr("x", function (d) {
+            return d.x;
+        })
+        .attr("y", function (d) {
+            return d.y;
+        });
+    });
+</script>
