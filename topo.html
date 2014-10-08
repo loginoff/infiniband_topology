@@ -24,8 +24,8 @@
 
     //Set up the force layout
     var force = d3.layout.force()
-        .charge(-120)
-        .linkDistance(30)
+        .charge(-1000)
+        .linkDistance(10)
         .size([width, height]);
 
     //Append a SVG to the body of the html page. Assign this SVG as an object to svg
@@ -48,8 +48,18 @@
      };
 
     d3.json("topo.json", function(error, topoData){
-        topoData.links=[];
-        updateGraph(topoData)
+        nodeindex={}
+        console.log(topoData.nodes)
+        for(var i=0; i < topoData.nodes.length; i++){
+            node = topoData.nodes[i];
+            nodeindex[node.guid] = node;
+        }
+        for(var i=0; i < topoData.links.length; i++){
+            link = topoData.links[i];
+            link.source = nodeindex[link.host1_guid];
+            link.target = nodeindex[link.host2_guid];
+        }
+        updateGraph({nodes:topoData.nodes,links:topoData.links});
     });
 
 function updateGraph(graph){
@@ -64,7 +74,7 @@ function updateGraph(graph){
       .enter().append("line")
         .attr("class", "link")
         .style("stroke-width", function (d) {
-            return 15;
+            return 1;
         });
 
     //Do the same with the circles for the nodes - no 

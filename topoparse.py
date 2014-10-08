@@ -94,6 +94,8 @@ def parseTopologyfile(topofile):
 				link.host2_portlid = host2.lid
 				link.host1_port = host1.port
 				link.host2_port = host2.port
+				link.host1_guid = host1.guid
+				link.host2_guid = host2.guid
 				links[linkhash] = link
 
 
@@ -110,7 +112,7 @@ if __name__=='__main__':
 
 	outfile = open('topo.json', 'w')
 	outfile.write(jsonpickle.encode(
-		{'nodes': nodes.values()}, unpicklable=False))
+		{'nodes': nodes.values(), 'links':links.values()}, unpicklable=False))
 	outfile.close()
 
 
