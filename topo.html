@@ -16,8 +16,8 @@
 <script src="http://d3js.org/d3.v3.min.js"></script>
 <script>
     //Constants for the SVG
-    var width  = 500,
-    height = 500;
+    var width  = 900,
+    height = 700;
 
     //Set up the colour scale
     var color = d3.scale.category20();
@@ -47,6 +47,12 @@
         ]
      };
 
+    d3.json("topo.json", function(error, topoData){
+        topoData.links=[];
+        updateGraph(topoData)
+    });
+
+function updateGraph(graph){
     //Creates the graph data structure out of the json data
     force.nodes(graph.nodes)
         .links(graph.links)
@@ -113,4 +119,5 @@
             return d.y;
         });
     });
+}
 </script>
