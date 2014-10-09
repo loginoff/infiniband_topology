@@ -11,6 +11,10 @@
     stroke-opacity: .6;
 }
 
+.nodename {
+    font-size: 10px;
+}
+
 </style>
 <svg id="chart"></svg>
 <script src="http://d3js.org/d3.v3.min.js"></script>
@@ -22,34 +26,96 @@
     //Set up the colour scale
     var color = d3.scale.category20();
 
-    //Set up the force layout
-    var force = d3.layout.force()
-        .charge(-1000)
-        .linkDistance(10)
-        .size([width, height]);
+    var xzoom = d3.scale.linear()
+        .domain([0,width])
+        .range([0,width]);
+
+    var yzoom = d3.scale.linear()
+        .domain([0,height])
+        .range([height,0]);
 
     //Append a SVG to the body of the html page. Assign this SVG as an object to svg
     var svg = d3.select("#chart")
         .attr("width", width)
-        .attr("height", height);
+        .attr("height", height)
+        .call(d3.behavior.zoom()
+        .x(xzoom)
+        .y(yzoom)
+        .scaleExtent([0.1,8])
+        .on("zoom",updateCoordinates));
 
-     var graph = {
-        nodes: [
-            {name: 'IB 1', type: 0},
-            {name: 'IB 2', type: 0},
-            {name: 'stage2', type: 1},
-            {name: 'stage69', type: 1},
-        ],
-        links: [
-            {source: 2, target: 1, value: 3},
-            {source: 3, target: 1, value: 5},
-            {source: 1, target: 0, value: 5},
-        ]
-     };
+    //Set up the force layout
+    var force = d3.layout.force()
+        .charge(-1000)
+        .linkDistance(50)
+        .size([width, height])
+        .on("tick", updateCoordinates);
+
+    var dragging = false;
+    var drag = force.drag()
+        .on('dragstart', function(d){
+            d.fixed = true;
+            d3.event.sourceEvent.stopPropagation();
+        })
+        .on('dragend', function(d){
+        })
+        .on('drag', function(d){
+            d.x = 5;
+            d.y = yzoom(d3.event.y);
+        })
+
+
+
+    var link, circle, text
+    function updateCoordinates() {
+        if(dragging){
+            return;
+        }
+        // link.attr('transform', zoomTransform);
+        // circle.attr('transform', zoomTransform);
+        // text.attr('transform', zoomTransform);
+        link.attr("x1", function (d) {
+            return xzoom(d.source.x);
+        })
+        .attr("y1", function (d) {
+            return yzoom(d.source.y);
+        })
+        .attr("x2", function (d) {
+            return xzoom(d.target.x);
+        })
+        .attr("y2", function (d) {
+            return yzoom(d.target.y);
+        });
+
+        //Causes some weird yanking when dragging a node
+        // node.attr('transform', function(d) {
+        //     return 'translate(' + d.x + ',' + d.y +')'
+        // })
+
+        //Changing the coordinates of the circle and text
+        //separately makes dragging smooth.
+        circle.attr("cx", function (d) {
+            return xzoom(d.x);
+        })
+        .attr("cy", function (d) {
+            return yzoom(d.y);
+        });
+
+        text.attr("x", function (d) {
+            return xzoom(d.x);
+        })
+        .attr("y", function (d) {
+            return yzoom(d.y);
+        });
+
+    }
+
+    
+        
+
 
     d3.json("topo.json", function(error, topoData){
         nodeindex={}
-        console.log(topoData.nodes)
         for(var i=0; i < topoData.nodes.length; i++){
             node = topoData.nodes[i];
             nodeindex[node.guid] = node;
@@ -69,7 +135,7 @@ function updateGraph(graph){
         .start();
 
     //Create all the line svgs but without locations yet
-    var link = svg.selectAll(".link")
+    link = svg.selectAll(".link")
         .data(graph.links)
       .enter().append("line")
         .attr("class", "link")
@@ -81,53 +147,17 @@ function updateGraph(graph){
     var node = svg.selectAll(".node")
         .data(graph.nodes)
       .enter().append("g");
-    var circle = node.append('circle')
+    
+    circle = node.append('circle')
         .attr("class", "node")
         .attr("r", 8)
         .style("fill", function (d) {
             return color(d.type);
         })
         .call(force.drag);
-    var text = node.append('text')
+    text = node.append('text')
         .text(function(d) { return d.name; })
-        .attr('dx', 10)
-
-
-    //Now we are giving the SVGs co-ordinates - the force layout is generating the co-ordinates which this code is using to update the attributes of the SVG elements
-    force.on("tick", function () {
-        link.attr("x1", function (d) {
-            return d.source.x;
-        })
-        .attr("y1", function (d) {
-            return d.source.y;
-        })
-        .attr("x2", function (d) {
-            return d.target.x;
-        })
-        .attr("y2", function (d) {
-            return d.target.y;
-        });
-
-        //Causes some weird yanking when dragging a node
-        // node.attr('transform', function(d) {
-        //     return 'translate(' + d.x + ',' + d.y +')'
-        // })
-
-        //Changing the coordinates of the circle and text
-        //separately makes dragging smooth.
-        circle.attr("cx", function (d) {
-            return d.x;
-        })
-        .attr("cy", function (d) {
-            return d.y;
-        });
-
-        text.attr("x", function (d) {
-            return d.x;
-        })
-        .attr("y", function (d) {
-            return d.y;
-        });
-    });
+        .attr('class', 'nodename')
+        .attr('dx', -50);
 }
 </script>
