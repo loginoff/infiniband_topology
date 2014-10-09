@@ -32,17 +32,17 @@
 
     var yzoom = d3.scale.linear()
         .domain([0,height])
-        .range([height,0]);
+        .range([0,height]);
 
     //Append a SVG to the body of the html page. Assign this SVG as an object to svg
     var svg = d3.select("#chart")
         .attr("width", width)
         .attr("height", height)
         .call(d3.behavior.zoom()
-        .x(xzoom)
-        .y(yzoom)
-        .scaleExtent([0.1,8])
-        .on("zoom",updateCoordinates));
+            .x(xzoom)
+            .y(yzoom)
+            .scaleExtent([0.1,8])
+            .on("zoom", updateCoordinates));
 
     //Set up the force layout
     var force = d3.layout.force()
@@ -60,8 +60,7 @@
         .on('dragend', function(d){
         })
         .on('drag', function(d){
-            d.x = 5;
-            d.y = yzoom(d3.event.y);
+
         })
 
 
@@ -110,24 +109,25 @@
 
     }
 
-    
-        
-
-
+    //We load the topology data from file as JSON
     d3.json("topo.json", function(error, topoData){
         nodeindex={}
         for(var i=0; i < topoData.nodes.length; i++){
             node = topoData.nodes[i];
             nodeindex[node.guid] = node;
+            node.connections={}
         }
         for(var i=0; i < topoData.links.length; i++){
             link = topoData.links[i];
             link.source = nodeindex[link.host1_guid];
             link.target = nodeindex[link.host2_guid];
+            link.source.connections[link.target.guid]=1;
+            link.target.connections[link.source.guid]=1;
         }
         updateGraph({nodes:topoData.nodes,links:topoData.links});
     });
 
+var selectedNode = null;
 function updateGraph(graph){
     //Creates the graph data structure out of the json data
     force.nodes(graph.nodes)
@@ -146,7 +146,24 @@ function updateGraph(graph){
     //Do the same with the circles for the nodes - no 
     var node = svg.selectAll(".node")
         .data(graph.nodes)
-      .enter().append("g");
+      .enter().append("g")
+        .on('click', function(){
+            selectedNode=this.__data__.guid;
+            circle
+                .attr('r', function(d){
+                    if (this.__data__.connections[selectedNode])
+                        return 20;
+                    else
+                        return 10;
+                });
+            link.style("stroke-width", function(d) {
+                if (this.__data__.source.guid == selectedNode || 
+                    this.__data__.target.guid == selectedNode)
+                    return 5;
+                else
+                    return 1;
+            })
+        })
     
     circle = node.append('circle')
         .attr("class", "node")
