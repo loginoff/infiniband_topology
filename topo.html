@@ -6,13 +6,34 @@
     stroke: #fff;
     stroke-width: 1.5px;
 }
+
+.faded {
+    opacity: 0.2;
+    stroke-width: 0.2px;
+}
+
+.highlight {
+    font-weight: bold;
+    stroke-width: 2px;
+}
+
 .link {
     stroke: #999;
-    stroke-opacity: .6;
+    stroke-opacity: 1;
+    /*stroke-width: 1;*/
 }
 
 .nodename {
     font-size: 10px;
+}
+
+svg {
+    width: 100%;
+    height: 100%;
+}
+
+body {
+    height: 100%;
 }
 
 </style>
@@ -20,8 +41,9 @@
 <script src="http://d3js.org/d3.v3.min.js"></script>
 <script>
     //Constants for the SVG
-    var width  = 900,
-    height = 700;
+    var svg = d3.select("#chart")
+    var width  = svg.style('width').replace('px','');
+    var height = svg.style('height').replace('px','');
 
     //Set up the colour scale
     var color = d3.scale.category20();
@@ -35,14 +57,13 @@
         .range([0,height]);
 
     //Append a SVG to the body of the html page. Assign this SVG as an object to svg
-    var svg = d3.select("#chart")
-        .attr("width", width)
-        .attr("height", height)
-        .call(d3.behavior.zoom()
+    
+    svg.call(d3.behavior.zoom()
             .x(xzoom)
             .y(yzoom)
             .scaleExtent([0.1,8])
-            .on("zoom", updateCoordinates));
+            .on("zoom", updateCoordinates))
+            .on('dblclick.zoom', null)
 
     //Set up the force layout
     var force = d3.layout.force()
@@ -51,7 +72,6 @@
         .size([width, height])
         .on("tick", updateCoordinates);
 
-    var dragging = false;
     var drag = force.drag()
         .on('dragstart', function(d){
             d.fixed = true;
@@ -67,12 +87,6 @@
 
     var link, circle, text
     function updateCoordinates() {
-        if(dragging){
-            return;
-        }
-        // link.attr('transform', zoomTransform);
-        // circle.attr('transform', zoomTransform);
-        // text.attr('transform', zoomTransform);
         link.attr("x1", function (d) {
             return xzoom(d.source.x);
         })
@@ -138,32 +152,45 @@ function updateGraph(graph){
     link = svg.selectAll(".link")
         .data(graph.links)
       .enter().append("line")
-        .attr("class", "link")
-        .style("stroke-width", function (d) {
-            return 1;
-        });
+        .attr("class", "link");
 
     //Do the same with the circles for the nodes - no 
     var node = svg.selectAll(".node")
         .data(graph.nodes)
       .enter().append("g")
-        .on('click', function(){
+        .on('mouseover', function(){
             selectedNode=this.__data__.guid;
-            circle
-                .attr('r', function(d){
-                    if (this.__data__.connections[selectedNode])
-                        return 20;
-                    else
-                        return 10;
-                });
-            link.style("stroke-width", function(d) {
-                if (this.__data__.source.guid == selectedNode || 
-                    this.__data__.target.guid == selectedNode)
-                    return 5;
-                else
-                    return 1;
+
+            node.classed({
+                'faded': function(d) {
+                    return !(d.guid==selectedNode || d.connections[selectedNode]);
+                },
+                'highlight': function(d) {
+                    return d.guid==selectedNode || d.connections[selectedNode];
+                }
+            })
+            link.classed({
+                'faded': function(d){
+                    return !(d.source.guid == selectedNode || 
+                            d.target.guid == selectedNode);
+                },
+                'highlight': function(d){
+                    return d.source.guid == selectedNode || 
+                            d.target.guid == selectedNode;
+                }
             })
         })
+        .on('dblclick', function(d){
+            d.fixed=false;
+        })
+        .on('mouseout', function(){
+            selectedNode = null;
+            node.classed('faded',false);
+            node.classed('highlight',false);
+            link.classed('faded',false);
+            link.classed('highlight',false);
+        })
+        .call(force.drag);
     
     circle = node.append('circle')
         .attr("class", "node")
@@ -171,7 +198,6 @@ function updateGraph(graph){
         .style("fill", function (d) {
             return color(d.type);
         })
-        .call(force.drag);
     text = node.append('text')
         .text(function(d) { return d.name; })
         .attr('class', 'nodename')
