@@ -20,6 +20,7 @@
 .link {
     stroke: #999;
     stroke-opacity: 1;
+    fill: none;
     /*stroke-width: 1;*/
 }
 
@@ -117,18 +118,35 @@ var selectedNode = null;
 //based on the data. This basically carries out the layout animation
 //as it is used for the tick function of the force layout
 function updateCoordinates() {
-    link.attr("x1", function (d) {
-        return xzoom(d.source.x);
+    // link.attr("x1", function (d) {
+    //     return xzoom(d.source.x);
+    // })
+    // .attr("y1", function (d) {
+    //     return yzoom(d.source.y);
+    // })
+    // .attr("x2", function (d) {
+    //     return xzoom(d.target.x);
+    // })
+    // .attr("y2", function (d) {
+    //     return yzoom(d.target.y);
+    // });
+    link.attr('d', function(d){
+        var src_x = xzoom(d.source.x);
+        var src_y = yzoom(d.source.y);
+        var dst_x = xzoom(d.target.x);
+        var dst_y = yzoom(d.target.y);
+
+        var dx = dst_x - src_x;
+        var dy = dst_y - src_y;
+        dr = Math.sqrt(dx*dx + dy*dy);
+
+        return "M" + 
+            src_x + "," + 
+            src_y + "A" +
+            dr + "," + dr + " 0 0,1 " +
+            dst_x + "," +
+            dst_y;
     })
-    .attr("y1", function (d) {
-        return yzoom(d.source.y);
-    })
-    .attr("x2", function (d) {
-        return xzoom(d.target.x);
-    })
-    .attr("y2", function (d) {
-        return yzoom(d.target.y);
-    });
 
     //Causes some weird yanking when dragging a node
     // node.attr('transform', function(d) {
@@ -173,6 +191,9 @@ d3.json("topo.json", function(error, topoData){
         link.target = nodeindex[link.host2_guid];
         link.source.connections[link.target.guid]=1;
         link.target.connections[link.source.guid]=1;
+
+        if(link.source.name.indexOf('tank1')>-1)
+            console.log(link.source.name);
     }
     updateGraph({nodes:topoData.nodes,links:topoData.links});
 });
@@ -188,7 +209,7 @@ function updateGraph(graph){
     //Create all the line svgs but without locations yet
     link = svg.selectAll(".link")
         .data(graph.links)
-      .enter().append("line")
+      .enter().append("path")
         .attr("class", "link");
 
     //A node is a g element containing a circle and some text
@@ -239,6 +260,6 @@ function updateGraph(graph){
         .text(function(d) { return d.name; })
         .attr('class', 'nodename')
         .attr('dx', 8)
-        .attr('dy', 10)
+        .attr('dy', ".35em")
 }
 </script>
