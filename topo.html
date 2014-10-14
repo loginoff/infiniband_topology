@@ -40,110 +40,147 @@ body {
 <svg id="chart"></svg>
 <script src="http://d3js.org/d3.v3.min.js"></script>
 <script>
-    //Constants for the SVG
-    var svg = d3.select("#chart")
-    var width  = svg.style('width').replace('px','');
-    var height = svg.style('height').replace('px','');
+//Define some global variables
+var svg = d3.select("#chart")
+var width  = svg.style('width').replace('px','');
+var height = svg.style('height').replace('px','');
 
-    //Set up the colour scale
-    var color = d3.scale.category20();
+//Set up the colour scale
+var color = d3.scale.category20();
 
-    var xzoom = d3.scale.linear()
-        .domain([0,width])
-        .range([0,width]);
+//The scales for implementing zoom, every coordinate used for
+//drawing will have to go through these.
+var xzoom = d3.scale.linear()
+    .domain([0,width])
+    .range([0,width]);
 
-    var yzoom = d3.scale.linear()
-        .domain([0,height])
-        .range([0,height]);
+var yzoom = d3.scale.linear()
+    .domain([0,height])
+    .range([0,height]);
 
-    //Append a SVG to the body of the html page. Assign this SVG as an object to svg
-    
-    svg.call(d3.behavior.zoom()
-            .x(xzoom)
-            .y(yzoom)
-            .scaleExtent([0.1,8])
-            .on("zoom", updateCoordinates))
-            .on('dblclick.zoom', null)
+//Assign the zoom behaviour to our SVG object.
+//The zoom behavior makes changes to our xzoom and yzoom scales based on
+//user input and calls the updateCoordinates function to update the coordinates
+//of our graph based on these updated scales.
+svg.call(d3.behavior.zoom()
+        .x(xzoom)
+        .y(yzoom)
+        .scaleExtent([0.1,8])
+        .on("zoom", updateCoordinates))
+        //Do not "zoom" on double-click
+        .on('dblclick.zoom', null)
 
-    //Set up the force layout
-    var force = d3.layout.force()
-        .charge(-1000)
-        .linkDistance(50)
-        .size([width, height])
-        .on("tick", updateCoordinates);
+//On window resize, we want the graph to also resize, so we have to update
+//the zoom scales, the force layout size and update all the coordinates of our elements.
+window.onresize = function(){
+    width = window.innerWidth;
+    height = window.innerHeight;
+    force.size([width,height]);
+    xzoom.range([0,width]);
+    yzoom.range([0,height]);
+    updateCoordinates();
+}
 
-    var drag = force.drag()
-        .on('dragstart', function(d){
-            d.fixed = true;
-            d3.event.sourceEvent.stopPropagation();
-        })
-        .on('dragend', function(d){
-        })
-        .on('drag', function(d){
+//Set up the force layout
+var force = d3.layout.force()
+    .charge(-1000)
+    .linkDistance(50)
+    .size([width, height])
+    .on("tick", updateCoordinates);
 
-        })
+//Make the nodes draggable
+var drag = force.drag()
+    //Once a node's been dragged it will stay fixed
+    .on('dragstart', function(d){
+        d.fixed = true;
+
+        //Do not propagate the drag event to svg element, which would
+        //activate the zoom behavior's drag event and pan the entire view
+        d3.event.sourceEvent.stopPropagation();
+    })
+    .on('dragend', function(d){
+    })
+    .on('drag', function(d){
+
+    })
 
 
+//Variables to hold the different components of our graph
+//we declare them here so they can be accessed from different functions
+var link, circle, text
 
-    var link, circle, text
-    function updateCoordinates() {
-        link.attr("x1", function (d) {
-            return xzoom(d.source.x);
-        })
-        .attr("y1", function (d) {
-            return yzoom(d.source.y);
-        })
-        .attr("x2", function (d) {
-            return xzoom(d.target.x);
-        })
-        .attr("y2", function (d) {
-            return yzoom(d.target.y);
-        });
+//This will contain the currently selected node, used to display
+//connectivity
+var selectedNode = null;
 
-        //Causes some weird yanking when dragging a node
-        // node.attr('transform', function(d) {
-        //     return 'translate(' + d.x + ',' + d.y +')'
-        // })
-
-        //Changing the coordinates of the circle and text
-        //separately makes dragging smooth.
-        circle.attr("cx", function (d) {
-            return xzoom(d.x);
-        })
-        .attr("cy", function (d) {
-            return yzoom(d.y);
-        });
-
-        text.attr("x", function (d) {
-            return xzoom(d.x);
-        })
-        .attr("y", function (d) {
-            return yzoom(d.y);
-        });
-
-    }
-
-    //We load the topology data from file as JSON
-    d3.json("topo.json", function(error, topoData){
-        nodeindex={}
-        for(var i=0; i < topoData.nodes.length; i++){
-            node = topoData.nodes[i];
-            nodeindex[node.guid] = node;
-            node.connections={}
-        }
-        for(var i=0; i < topoData.links.length; i++){
-            link = topoData.links[i];
-            link.source = nodeindex[link.host1_guid];
-            link.target = nodeindex[link.host2_guid];
-            link.source.connections[link.target.guid]=1;
-            link.target.connections[link.source.guid]=1;
-        }
-        updateGraph({nodes:topoData.nodes,links:topoData.links});
+//This function will update the coordinates of our nodes and links
+//based on the data. This basically carries out the layout animation
+//as it is used for the tick function of the force layout
+function updateCoordinates() {
+    link.attr("x1", function (d) {
+        return xzoom(d.source.x);
+    })
+    .attr("y1", function (d) {
+        return yzoom(d.source.y);
+    })
+    .attr("x2", function (d) {
+        return xzoom(d.target.x);
+    })
+    .attr("y2", function (d) {
+        return yzoom(d.target.y);
     });
 
-var selectedNode = null;
+    //Causes some weird yanking when dragging a node
+    // node.attr('transform', function(d) {
+    //     return 'translate(' + d.x + ',' + d.y +')'
+    // })
+
+    //Changing the coordinates of the circle and text
+    //separately makes dragging smooth.
+    circle.attr("cx", function (d) {
+        return xzoom(d.x);
+    })
+    .attr("cy", function (d) {
+        return yzoom(d.y);
+    });
+
+    text.attr("x", function (d) {
+        return xzoom(d.x);
+    })
+    .attr("y", function (d) {
+        return yzoom(d.y);
+    });
+
+}
+
+//We load the topology data from file as JSON
+d3.json("topo.json", function(error, topoData){
+    //Each node has a unique GUID, we use it to index the nodes for
+    //accessing them later on
+    nodeindex={}
+    for(var i=0; i < topoData.nodes.length; i++){
+        node = topoData.nodes[i];
+        nodeindex[node.guid] = node;
+        node.connections={}
+    }
+    //For each link we create references to nodes at both sides,
+    //this is needed by the force layout.
+    //Also add to each node the GUID's of nodes they are connected to.
+    //This is used later for visualizing directly connected nodes
+    for(var i=0; i < topoData.links.length; i++){
+        link = topoData.links[i];
+        link.source = nodeindex[link.host1_guid];
+        link.target = nodeindex[link.host2_guid];
+        link.source.connections[link.target.guid]=1;
+        link.target.connections[link.source.guid]=1;
+    }
+    updateGraph({nodes:topoData.nodes,links:topoData.links});
+});
+
+//This function takes care of drawing the graph once the data has been
+//loaded and formatted correctly
 function updateGraph(graph){
-    //Creates the graph data structure out of the json data
+    //We add our nodes and links and start the force layout generation.
     force.nodes(graph.nodes)
         .links(graph.links)
         .start();
@@ -154,7 +191,7 @@ function updateGraph(graph){
       .enter().append("line")
         .attr("class", "link");
 
-    //Do the same with the circles for the nodes - no 
+    //A node is a g element containing a circle and some text
     var node = svg.selectAll(".node")
         .data(graph.nodes)
       .enter().append("g")
@@ -201,6 +238,7 @@ function updateGraph(graph){
     text = node.append('text')
         .text(function(d) { return d.name; })
         .attr('class', 'nodename')
-        .attr('dx', -50);
+        .attr('dx', 8)
+        .attr('dy', 10)
 }
 </script>
