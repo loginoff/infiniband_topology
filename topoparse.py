@@ -3,6 +3,7 @@
 import re
 import sys
 import jsonpickle
+import sys
 
 class IBNode:
 	def __init__(self):
@@ -32,17 +33,19 @@ def parseTopologyfile(topofile):
 
 		if line.startswith('Switch'):
 			curswitch = IBNode()
-			m=re.search('[^"]+"([^"]+)"[^"]+"([^"]+)".*lid ([0-9]+)', line)
-			curswitch.guid = m.group(1).lstrip('S-')
-			curswitch.name = m.group(2)
-			curswitch.lid = m.group(3)
+			m=re.search('Switch\s+([0-9]+)\s+"([^"]+)"[^"]+"([^"]+)".*lid ([0-9]+)', line)
+			curswitch.available_ports = m.group(1)
+			curswitch.connected_ports = 0
+			curswitch.guid = m.group(2).lstrip('S-')
+			curswitch.name = m.group(3)
+			curswitch.lid = m.group(4)
 			curswitch.type = 'S'
 
-			print curswitch.name, curswitch.guid, curswitch.lid
 			nodes[curswitch.guid] = curswitch
 			continue
 
 		if line.startswith('[') and curswitch:
+			curswitch.connected_ports+=1
 			m=re.search('\[([0-9]+)\]\s*"([^"]+)"\[([0-9]+)\][^"]+"([^"]+)".*lid ([0-9]+) (.+)$', line)
 			switchport=m.group(1)
 			nodeguid=m.group(2)
@@ -65,11 +68,13 @@ def parseTopologyfile(topofile):
 
 			try:
 				node = nodes[nodeguid]
+				node.connected_ports+=1
 			except KeyError:
 				node = IBNode()
 				node.guid = nodeguid
 				node.name = nodename
 				node.type = nodetype
+				node.connected_ports = 1
 				nodes[nodeguid] = node
 
 			if curswitch.guid < node.guid:
@@ -98,19 +103,31 @@ def parseTopologyfile(topofile):
 				link.host2_guid = host2.guid
 				links[linkhash] = link
 
+			continue
 
-			print switchport,nodeguid,nodeport,nodename,portlid,linktype
+		if line.startswith('Ca'):
+			m=re.search('Ca\s+([0-9]+)\s+"([^"]+)"', line)
+			portcount=m.group(1)
+			nodeguid=m.group(2).lstrip('H-')
+			node=nodes[nodeguid]
+			node.available_ports=portcount
+
+			# print switchport,nodeguid,nodeport,nodename,portlid,linktype
 	return nodes, links
 
 
 if __name__=='__main__':
-	topofile = open('topo', 'r')
+	if len(sys.argv) != 2:
+		print "Please point to the output of ibnetdiscover:"
+		print "  %s [ibnetdiscover_output]" % sys.argv[0]
+		sys.exit(1)
+
+	topofile = open(sys.argv[1], 'r')
 	nodes, links = parseTopologyfile(topofile)
 	topofile.close()
-	print len(nodes)
-	print len(links)
+	print "Nodes parsed %d, connections parsed: %d" % (len(nodes),len(links))
 
-	outfile = open('topo.json', 'w')
+	outfile = open('%s.json' % sys.argv[1], 'w')
 	outfile.write(jsonpickle.encode(
 		{'nodes': nodes.values(), 'links':links.values()}, unpicklable=False))
 	outfile.close()

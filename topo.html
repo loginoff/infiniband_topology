@@ -28,16 +28,46 @@
     font-size: 10px;
 }
 
+div {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+}
+
 svg {
     width: 100%;
     height: 100%;
 }
 
-body {
+body, html {
     height: 100%;
+    width: 100%;
 }
 
 </style>
+<div id="infoview">
+    <table>
+        <tr>
+            <td id="name" colspan=2 style="font-weight: bold;">stage12</td>
+        </tr>
+        <tr>
+            <td>Guid:</td>
+            <td id="guid">48294820480</td>
+        </tr>
+        <tr>
+            <td>Type:</td>
+            <td id="type">switch</td>
+        </tr>
+        <tr>
+            <td>Ports (connected):</td>
+            <td id="portcount">36 (27)</td>
+        </tr>
+        <tr>
+            <td>Connected nodes:</td>
+            <td id="connections">36</td>
+        </tr>
+    </table>
+</div>
 <svg id="chart"></svg>
 <script src="http://d3js.org/d3.v3.min.js"></script>
 <script>
@@ -146,6 +176,7 @@ function updateCoordinates() {
         dr = Math.sqrt(dx*dx + dy*dy)*d.rank;
 
         //And we alternate the "direction" of the curve for even and odd ranks
+        //The direction can be altered by swapping the endpoints of the curve.
         if(d.rank%2==0){
             var swap=src_x;
             src_x=dst_x;
@@ -195,6 +226,9 @@ d3.json("topo.json", function(error, topoData){
         node = topoData.nodes[i];
         nodeindex[node.guid] = node;
         node.connections={}
+        // node.available_ports=2;
+        node.connected_nodes=0;
+        // node.connected_ports=0;
     }
     //For each link we create references to nodes at both sides,
     //this is needed by the force layout.
@@ -208,13 +242,19 @@ d3.json("topo.json", function(error, topoData){
         //We also add how many connections we have from each node to each node
         if(link.source.connections[link.target.guid])
             link.source.connections[link.target.guid]++;
-        else
+        else{
             link.source.connections[link.target.guid]=1;
+            link.source.connected_nodes++;
+        }
 
         if(link.target.connections[link.source.guid])
             link.target.connections[link.source.guid]++;
-        else
+        else{
             link.target.connections[link.source.guid]=1;
+            link.target.connected_nodes++;
+        }
+        // link.target.connected_ports++;
+        // link.source.connected_ports++;
 
         //The rank on the link will symbolize what "nth" connection
         //between the same nodes this link is, this is used to visualize
@@ -224,6 +264,14 @@ d3.json("topo.json", function(error, topoData){
     updateGraph({nodes:topoData.nodes,links:topoData.links});
 });
 
+function updateNodeinfo(node) {
+    var info = d3.select('#infoview');
+    info.select('#name').html(node.name);
+    info.select('#guid').html('0x'+node.guid);
+    info.select('#type').html(node.type);
+    info.select('#portcount').html(node.available_ports+' ('+node.connected_ports+')');
+    info.select('#connections').html(node.connected_nodes);
+}
 //This function takes care of drawing the graph once the data has been
 //loaded and formatted correctly
 function updateGraph(graph){
@@ -252,7 +300,7 @@ function updateGraph(graph){
                 'highlight': function(d) {
                     return d.guid==selectedNode || d.connections[selectedNode];
                 }
-            })
+            });
             link.classed({
                 'faded': function(d){
                     return !(d.source.guid == selectedNode || 
@@ -262,7 +310,8 @@ function updateGraph(graph){
                     return d.source.guid == selectedNode || 
                             d.target.guid == selectedNode;
                 }
-            })
+            });
+            updateNodeinfo(this.__data__);
         })
         .on('dblclick', function(d){
             d.fixed=false;
