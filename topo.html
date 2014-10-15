@@ -130,6 +130,9 @@ function updateCoordinates() {
     // .attr("y2", function (d) {
     //     return yzoom(d.target.y);
     // });
+
+    //We draw the links as curved paths, with the radius of the curve
+    //being dependant on the distance between the nodes
     link.attr('d', function(d){
         var src_x = xzoom(d.source.x);
         var src_y = yzoom(d.source.y);
@@ -138,8 +141,20 @@ function updateCoordinates() {
 
         var dx = dst_x - src_x;
         var dy = dst_y - src_y;
-        dr = Math.sqrt(dx*dx + dy*dy);
 
+        //The radius is also dependant of the "rank" of the link
+        dr = Math.sqrt(dx*dx + dy*dy)*d.rank;
+
+        //And we alternate the "direction" of the curve for even and odd ranks
+        if(d.rank%2==0){
+            var swap=src_x;
+            src_x=dst_x;
+            dst_x=swap;
+
+            swap=src_y;
+            src_y=dst_y;
+            dst_y=swap;
+        }
         return "M" + 
             src_x + "," + 
             src_y + "A" +
@@ -189,11 +204,22 @@ d3.json("topo.json", function(error, topoData){
         link = topoData.links[i];
         link.source = nodeindex[link.host1_guid];
         link.target = nodeindex[link.host2_guid];
-        link.source.connections[link.target.guid]=1;
-        link.target.connections[link.source.guid]=1;
 
-        if(link.source.name.indexOf('tank1')>-1)
-            console.log(link.source.name);
+        //We also add how many connections we have from each node to each node
+        if(link.source.connections[link.target.guid])
+            link.source.connections[link.target.guid]++;
+        else
+            link.source.connections[link.target.guid]=1;
+
+        if(link.target.connections[link.source.guid])
+            link.target.connections[link.source.guid]++;
+        else
+            link.target.connections[link.source.guid]=1;
+
+        //The rank on the link will symbolize what "nth" connection
+        //between the same nodes this link is, this is used to visualize
+        //many connections between the same two nodes in a visually pleasing way
+        link.rank = link.source.connections[link.target.guid];
     }
     updateGraph({nodes:topoData.nodes,links:topoData.links});
 });
