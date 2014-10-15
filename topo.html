@@ -24,6 +24,10 @@
     /*stroke-width: 1;*/
 }
 
+.hidden {
+    display: none;
+}
+
 .nodename {
     font-size: 10px;
 }
@@ -45,7 +49,7 @@ body, html {
 }
 
 </style>
-<div id="infoview">
+<div id="infoview" class="hidden">
     <table>
         <tr>
             <td id="name" colspan=2 style="font-weight: bold;">stage12</td>
@@ -68,7 +72,8 @@ body, html {
         </tr>
     </table>
 </div>
-<svg id="chart"></svg>
+<svg id="chart">
+</svg>
 <script src="http://d3js.org/d3.v3.min.js"></script>
 <script>
 //Define some global variables
@@ -143,7 +148,11 @@ var link, circle, text
 //This will contain the currently selected node, used to display
 //connectivity
 var selectedNode = null;
+var activeNode=null;
 
+svg.on("click", function(){
+    activeNode=null;
+})
 //This function will update the coordinates of our nodes and links
 //based on the data. This basically carries out the layout animation
 //as it is used for the tick function of the force layout
@@ -284,13 +293,17 @@ function updateGraph(graph){
     link = svg.selectAll(".link")
         .data(graph.links)
       .enter().append("path")
-        .attr("class", "link");
+        .attr("class", "link")
+
 
     //A node is a g element containing a circle and some text
     var node = svg.selectAll(".node")
         .data(graph.nodes)
       .enter().append("g")
         .on('mouseover', function(){
+            if(activeNode)
+                return;
+            d3.select('#infoview').classed('hidden', false);
             selectedNode=this.__data__.guid;
 
             node.classed({
@@ -313,15 +326,22 @@ function updateGraph(graph){
             });
             updateNodeinfo(this.__data__);
         })
+        .on('click', function(){
+            activeNode = this.__data__.guid;
+            d3.event.sourceEvent.stopPropagation();
+        })
         .on('dblclick', function(d){
             d.fixed=false;
         })
         .on('mouseout', function(){
+            if(activeNode)
+                return;
             selectedNode = null;
             node.classed('faded',false);
             node.classed('highlight',false);
             link.classed('faded',false);
             link.classed('highlight',false);
+            d3.select('#infoview').classed('hidden',true);
         })
         .call(force.drag);
     
