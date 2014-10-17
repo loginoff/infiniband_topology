@@ -116,6 +116,13 @@ def parseTopologyfile(topofile):
 			# print switchport,nodeguid,nodeport,nodename,portlid,linktype
 	return nodes, links
 
+#This function is UT cluster specific and removes some clutter from
+#the names of our nodes
+def beautifyNames(nodes):
+	for node in nodes:
+		node.name = node.name.rstrip('mlx4_0')
+		if node.type=='switch':
+			node.name = node.name.replace('MF0;','')
 
 if __name__=='__main__':
 	if len(sys.argv) != 2:
@@ -127,6 +134,8 @@ if __name__=='__main__':
 	nodes, links = parseTopologyfile(topofile)
 	topofile.close()
 	print "Nodes parsed %d, connections parsed: %d" % (len(nodes),len(links))
+
+	beautifyNames(nodes.values())
 
 	outfile = open('%s.json' % sys.argv[1], 'w')
 	outfile.write(jsonpickle.encode(

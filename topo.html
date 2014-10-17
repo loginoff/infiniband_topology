@@ -81,6 +81,14 @@ body, html {
 </svg>
 <script src="http://d3js.org/d3.v3.min.js"></script>
 <script>
+
+//A utility function for parsing URL parameters
+function getParameterByName(name) {
+    name = name.replace(/[\[]/, "\\[").replace(/[\]]/, "\\]");
+    var regex = new RegExp("[\\?&]" + name + "=([^&#]*)"),
+        results = regex.exec(location.search);
+    return results === null ? "" : decodeURIComponent(results[1].replace(/\+/g, " "));
+}
 //Define some global variables
 var svg = d3.select("#chart")
 var width  = svg.style('width').replace('px','');
@@ -222,8 +230,14 @@ function updateCoordinates() {
 
 }
 
+topofile = getParameterByName('topofile');
 //We load the topology data from file as JSON
-d3.json("topo.json", function(error, topoData){
+d3.json(topofile, function(error, topoData){
+    console.log(topofile);
+    if(error){
+        alert('Unable to load '+topofile);
+        return;
+    }
     //Each node has a unique GUID, we use it to index the nodes for
     //accessing them later on
     nodeindex={}
