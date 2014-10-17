@@ -7,6 +7,11 @@
     stroke-width: 1.5px;
 }
 
+.selected {
+    stroke: red;
+    stroke-width: 3px;
+}
+
 .faded {
     opacity: 0.2;
     stroke-width: 0.2px;
@@ -133,8 +138,10 @@ var drag = force.drag()
         //Do not propagate the drag event to svg element, which would
         //activate the zoom behavior's drag event and pan the entire view
         d3.event.sourceEvent.stopPropagation();
+        mode='drag';
     })
     .on('dragend', function(d){
+        mode='idle';
     })
     .on('drag', function(d){
 
@@ -143,33 +150,22 @@ var drag = force.drag()
 
 //Variables to hold the different components of our graph
 //we declare them here so they can be accessed from different functions
-var link, circle, text
+var link, circle, text, node, mode
 
 //This will contain the currently selected node, used to display
 //connectivity
 var selectedNode = null;
+//This will contain the node that has been hovered on
 var activeNode=null;
 
 svg.on("click", function(){
-    activeNode=null;
+    mode='idle';
+    unselectNodes();
 })
 //This function will update the coordinates of our nodes and links
 //based on the data. This basically carries out the layout animation
 //as it is used for the tick function of the force layout
 function updateCoordinates() {
-    // link.attr("x1", function (d) {
-    //     return xzoom(d.source.x);
-    // })
-    // .attr("y1", function (d) {
-    //     return yzoom(d.source.y);
-    // })
-    // .attr("x2", function (d) {
-    //     return xzoom(d.target.x);
-    // })
-    // .attr("y2", function (d) {
-    //     return yzoom(d.target.y);
-    // });
-
     //We draw the links as curved paths, with the radius of the curve
     //being dependant on the distance between the nodes
     link.attr('d', function(d){
@@ -235,9 +231,7 @@ d3.json("topo.json", function(error, topoData){
         node = topoData.nodes[i];
         nodeindex[node.guid] = node;
         node.connections={}
-        // node.available_ports=2;
         node.connected_nodes=0;
-        // node.connected_ports=0;
     }
     //For each link we create references to nodes at both sides,
     //this is needed by the force layout.
@@ -262,8 +256,6 @@ d3.json("topo.json", function(error, topoData){
             link.target.connections[link.source.guid]=1;
             link.target.connected_nodes++;
         }
-        // link.target.connected_ports++;
-        // link.source.connected_ports++;
 
         //The rank on the link will symbolize what "nth" connection
         //between the same nodes this link is, this is used to visualize
@@ -281,6 +273,42 @@ function updateNodeinfo(node) {
     info.select('#portcount').html(node.available_ports+' ('+node.connected_ports+')');
     info.select('#connections').html(node.connected_nodes);
 }
+
+//This function highlights all the nodes and links
+//directly connected to the node with the guid given as argument
+//and fades everything else
+function selectNodes(curnode){
+    updateNodeinfo(curnode);
+    d3.select('#infoview').classed('hidden', false);
+    node.classed({
+        'faded': function(d) {
+            return !(d.guid==curnode.guid || d.connections[curnode.guid]);
+        },
+        'highlight': function(d) {
+            return d.guid==curnode.guid || d.connections[curnode.guid];
+        }
+    });
+    link.classed({
+        'faded': function(d){
+            return !(d.source.guid == curnode.guid || 
+                    d.target.guid == curnode.guid);
+        },
+        'highlight': function(d){
+            return d.source.guid == curnode.guid || 
+                    d.target.guid == curnode.guid;
+        }
+    });
+}
+
+//This function displays all the nodes and links as unselected
+function unselectNodes(){
+    node.classed('selected', false);
+    node.classed('faded',false);
+    node.classed('highlight',false);
+    link.classed('faded',false);
+    link.classed('highlight',false);
+    d3.select('#infoview').classed('hidden',true);
+}
 //This function takes care of drawing the graph once the data has been
 //loaded and formatted correctly
 function updateGraph(graph){
@@ -297,51 +325,24 @@ function updateGraph(graph){
 
 
     //A node is a g element containing a circle and some text
-    var node = svg.selectAll(".node")
+    node = svg.selectAll(".node")
         .data(graph.nodes)
       .enter().append("g")
         .on('mouseover', function(){
-            if(activeNode)
+            if(mode=='drag'||mode=='selected')
                 return;
-            d3.select('#infoview').classed('hidden', false);
-            selectedNode=this.__data__.guid;
-
-            node.classed({
-                'faded': function(d) {
-                    return !(d.guid==selectedNode || d.connections[selectedNode]);
-                },
-                'highlight': function(d) {
-                    return d.guid==selectedNode || d.connections[selectedNode];
-                }
-            });
-            link.classed({
-                'faded': function(d){
-                    return !(d.source.guid == selectedNode || 
-                            d.target.guid == selectedNode);
-                },
-                'highlight': function(d){
-                    return d.source.guid == selectedNode || 
-                            d.target.guid == selectedNode;
-                }
-            });
-            updateNodeinfo(this.__data__);
+            selectNodes(this.__data__);
         })
         .on('click', function(){
-            activeNode = this.__data__.guid;
-            d3.event.sourceEvent.stopPropagation();
+            d3.event.stopPropagation();
+            // d3.select(this).classed('selected',true);
+            // mode='selected';
         })
         .on('dblclick', function(d){
             d.fixed=false;
         })
         .on('mouseout', function(){
-            if(activeNode)
-                return;
-            selectedNode = null;
-            node.classed('faded',false);
-            node.classed('highlight',false);
-            link.classed('faded',false);
-            link.classed('highlight',false);
-            d3.select('#infoview').classed('hidden',true);
+            unselectNodes();
         })
         .call(force.drag);
     
