@@ -39,7 +39,7 @@ def parseTopologyfile(topofile):
 			curswitch.guid = m.group(2).lstrip('S-')
 			curswitch.name = m.group(3)
 			curswitch.lid = m.group(4)
-			curswitch.type = 'S'
+			curswitch.type = 'switch'
 
 			nodes[curswitch.guid] = curswitch
 			continue
@@ -56,10 +56,10 @@ def parseTopologyfile(topofile):
 			linktype=m.group(6)
 
 			if nodeguid.startswith('S-'):
-				nodetype = 'S'
+				nodetype = 'switch'
 				nodeguid=nodeguid.lstrip('S-')
 			elif nodeguid.startswith('H-'):
-				nodetype = 'H'
+				nodetype = 'HCA'
 				nodeguid=nodeguid.lstrip('H-')
 			else:
 				print 'Unknown prefix for host guid: %s' % nodeguid
@@ -68,7 +68,8 @@ def parseTopologyfile(topofile):
 
 			try:
 				node = nodes[nodeguid]
-				node.connected_ports+=1
+				if node.type != 'switch':
+					node.connected_ports+=1
 			except KeyError:
 				node = IBNode()
 				node.guid = nodeguid
