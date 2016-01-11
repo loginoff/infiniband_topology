@@ -1,0 +1,50 @@
+.node {
+    stroke: #fff;
+    stroke-width: 1.5px;
+}
+
+.selected {
+    stroke: red;
+    stroke-width: 3px;
+}
+
+.faded {
+    opacity: 0.2;
+    stroke-width: 0.2px;
+}
+
+.highlight {
+    font-weight: bold;
+    stroke-width: 2px;
+}
+
+.link {
+    stroke: #999;
+    stroke-opacity: 1;
+    fill: none;
+    /*stroke-width: 1;*/
+}
+
+.hidden {
+    display: none;
+}
+
+.nodename {
+    font-size: 10px;
+}
+
+div {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+}
+
+svg {
+    width: 100%;
+    height: 95%;
+}
+
+body, html {
+    height: 100%;
+    width: 100%;
+}
