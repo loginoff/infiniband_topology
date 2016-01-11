@@ -18,10 +18,10 @@ var color = function(d) {
     }
 
     // Color the nodes based on the type of node
-    switch (d.name) {
-        case "type1":
+    switch (d.type) {
+        case "switch":
             return(d3.rgb("blue"));
-        case "type2":
+        case "HCA":
             return(d3.rgb("orange"));
         default:
             return(d3.rgb("black"));
@@ -161,8 +161,7 @@ function updateCoordinates() {
 
 }
 
-// topofile = getParameterByName('topofile');
-var topofile = "ibnetdiscover.out.json";
+var topofile = getParameterByName('topofile') || 'default topofile';
 
 //We load the topology data from file as JSON
 d3.json(topofile, function(error, topoData){
