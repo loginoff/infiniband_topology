@@ -11,22 +11,7 @@ var width  = svg.style('width').replace('px','');
 var height = svg.style('height').replace('px','');
 
 //Set up the colour scale
-var color = function(d) {
-    console.log(d);
-    if (d.name.substr(0,6) == "ime-cn") {
-        return(d3.rgb("green"));
-    }
-
-    // Color the nodes based on the type of node
-    switch (d.type) {
-        case "switch":
-            return(d3.rgb("blue"));
-        case "HCA":
-            return(d3.rgb("orange"));
-        default:
-            return(d3.rgb("black"));
-    }
-};
+var color = d3.scale.category20();
 
 //The scales for implementing zoom, every coordinate used for
 //drawing will have to go through these.
@@ -296,7 +281,7 @@ function updateGraph(graph){
         .attr("class", "node")
         .attr("r", 8)
         .style("fill", function (d) {
-            return color(d);
+            return color(d.type);
         });
     text = node.append('text')
         .text(function(d) { return d.name; })
